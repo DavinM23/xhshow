@@ -3,8 +3,8 @@ import base64
 import json
 import time
 from asyncio import WindowsSelectorEventLoopPolicy
-from code import XhsDesKeys
-from code.captcha import CaptchaSolver
+from codes import XhsDesKeys
+from codes.captcha import CaptchaSolver
 from typing import Dict, List
 
 from pyDes import ECB, PAD_PKCS5, des
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("未找到现有文件，将创建新文件")
 
-    asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    # asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
     new_result = asyncio.run(main(target_count=10, use_proxy=False))
     print(f"本次获取数据数量: {len(new_result)}")
 

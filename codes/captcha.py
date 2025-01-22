@@ -1,14 +1,14 @@
 import base64
 import json
 import random
-from code import XhsDesKeys
+from codes import XhsDesKeys
 
 import cv2
 import numpy as np
 from curl_cffi.requests import AsyncSession
 from pyDes import ECB, PAD_PKCS5, des
-
 from config import bg_nums
+import asyncio
 
 
 class CaptchaSolver:
@@ -166,16 +166,20 @@ class CaptchaSolver:
         rid, captcha_info = await self.decrypt_captcha_info(captcha_data)
         bg_num = bg_nums.get(captcha_info['backgroundUrl'].split('/')[-1].split('.')[0], None)
 
+        # TODO
+        # bg_num = 141
         if not bg_num:
             return None
 
         kwargs = {'stream': True}
         async with AsyncSession() as session:
             response = await session.get(captcha_info['captchaUrl'], **kwargs)
+            # response = await session.get("https://picasso-static.xiaohongshu.com/center_s709244204.png", **kwargs)
             img2_data = np.frombuffer(await response.acontent(), np.uint8)
             img2 = cv2.imdecode(img2_data, cv2.IMREAD_COLOR)
 
-        img1 = cv2.imread(f'./static/target/center_{bg_num}.png', cv2.IMREAD_COLOR)
+        # img1 = cv2.imread(f'../static/target/center_{bg_num}.png', cv2.IMREAD_COLOR)
+        img1 = cv2.imread(f'../static/target/center_{bg_num}.png', cv2.COLOR_BGR2GRAY)
         center = (img2.shape[1] // 2, img2.shape[0] // 2)
 
         angle_dict = {angle: await self.calculate_mse(img1,
@@ -184,3 +188,27 @@ class CaptchaSolver:
                       for angle in range(1, 361, 2)}
 
         return await self.get_distance(int((min(angle_dict, key=angle_dict.get) * 360) / 285))
+
+
+if __name__ == '__main__':
+    captcha_str = '{"msg":"成功","data":{"rid":"82b3816063924fcc8da520da62d641fb","captchaInfo":"n44i7BEo28u0rn2O3JqlAImvGIqJb/iKSwGM/o1GVXaqxUlM441t088d3OQugfqJbiPttTYS4SOEvUgECbb9M3wqNSTYxLCteRfQoyhphZ3TMIocLaa880FI23yrXj99tQouSrdZjTq5GlD0gl9Yfw1952JnoveWi6wgssg+acmJIRQzY8DtYqc8I/KEXIw9YcTSfnQsZlNzAJiduNAqHg=="},"codes":0,"success":true}'
+    captcha_data = json.loads(captcha_str)
+    solver = CaptchaSolver()
+    info = asyncio.run(solver.get_distance_from_info(captcha_data))
+    print(f"{info}")
+    encrypt = asyncio.run(solver.encrypt_data(XhsDesKeys.ENCODE_TRACK, json.dumps(info)))
+    print(f"{encrypt}")
+
+    # img = cv2.imread(f'../input_imgs/center_2.png', cv2.COLOR_BGR2GRAY)
+    # img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img_resized = cv2.resize(img_gray, (400, 400))
+    # cropped_square = img_resized[130:270, 130:270]
+    # img_binary = cv2.adaptiveThreshold(
+    #     cropped_square,
+    #     255,
+    #     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    #     cv2.THRESH_BINARY,
+    #     11,
+    #     2
+    # )
+    # cv2.imwrite('../output_imgs/center_2.png', img_binary)
